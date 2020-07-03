@@ -1,5 +1,7 @@
 module github.com/nobonobo/ssh-p2p
 
+go 1.14
+
 require (
 	github.com/google/go-cmp v0.2.0 // indirect
 	github.com/google/uuid v1.0.0
