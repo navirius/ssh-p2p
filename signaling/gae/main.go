@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,8 +25,24 @@ func main() {
 	http.Handle("/pull/", http.StripPrefix("/pull/", pullData()))
 	http.Handle("/push/", http.StripPrefix("/push/", pushData()))
 
+	args := os.Args[1:]
+
 	port := os.Getenv("PORT")
 	if port == "" {
+		if len(args) > 0 {
+			for i := 0; i < len(args); i++ {
+				if strings.Contains(args[i], "-port") {
+					splited := strings.Split(args[i], "=")
+					port = splited[1]
+					break
+				}
+			}
+		} else {
+			port = "8080"
+			log.Printf("Defaulting to port %s", port)
+		}
+
+	} else {
 		port = "8080"
 		log.Printf("Defaulting to port %s", port)
 	}

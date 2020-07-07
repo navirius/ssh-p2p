@@ -1,5 +1,7 @@
 module github.com/pions/webrtc
 
+go 1.14
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pions/dtls v1.0.2

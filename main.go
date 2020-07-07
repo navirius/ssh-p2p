@@ -38,7 +38,8 @@ var (
 		IceServers: []webrtc.RTCIceServer{
 			{
 				URLs: []string{
-					"stun:stun.l.google.com:19302",
+					//"stun:stun.l.google.com:19302",
+					"stun:103.252.101.226:2030",
 				},
 			},
 		},
@@ -139,22 +140,24 @@ func main() {
 		fmt.Println(key)
 		os.Exit(0)
 	case "server":
-		var addr, key string
+		var addr, key, signalServer string
 		flags.StringVar(&addr, "dial", "127.0.0.1:22", "dial addr = host:port")
 		flags.StringVar(&key, "key", "sample", "connection key")
+		flags.StringVar(&signalServer, "signal", "stun:103.252.101.226:2030", "signal server = stun:signalserver.com:2030")
 		if err := flags.Parse(os.Args[2:]); err != nil {
 			log.Fatalln(err)
 		}
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT)
 		ctx, cancel := context.WithCancel(context.Background())
-		go serve(ctx, key, addr)
+		go serve(ctx, key, addr, signalServer)
 		<-sig
 		cancel()
 	case "client":
-		var addr, key string
+		var addr, key, signalServer string
 		flags.StringVar(&addr, "listen", "127.0.0.1:2222", "listen addr = host:port")
 		flags.StringVar(&key, "key", "sample", "connection key")
+		flags.StringVar(&signalServer, "signalServer", "stun:103.252.101.226:2030", "signal server = stun:signalserver.com:2030")
 		if err := flags.Parse(os.Args[2:]); err != nil {
 			log.Fatalln(err)
 		}
@@ -173,7 +176,7 @@ func main() {
 					log.Println(err)
 					continue
 				}
-				go connect(ctx, key, sock)
+				go connect(ctx, key, signalServer, sock)
 			}
 		}()
 		<-sig
@@ -190,10 +193,23 @@ func (s *sendWrap) Write(b []byte) (int, error) {
 	return len(b), err
 }
 
-func serve(ctx context.Context, key, addr string) {
+func serve(ctx context.Context, key, addr, signalServer string) {
 	log.Println("server started")
 	for v := range pull(ctx, key) {
 		log.Printf("info: %#v", v)
+		if signalServer != "" {
+			defaultRTCConfiguration = webrtc.RTCConfiguration{
+				IceServers: []webrtc.RTCIceServer{
+					{
+						URLs: []string{
+							signalServer,
+						},
+					},
+				},
+			}
+		}
+
+		log.Println("using signal server " + signalServer)
 		pc, err := webrtc.New(defaultRTCConfiguration)
 		if err != nil {
 			log.Println("rtc error:", err)
@@ -257,7 +273,7 @@ func serve(ctx context.Context, key, addr string) {
 	}
 }
 
-func connect(ctx context.Context, key string, sock net.Conn) {
+func connect(ctx context.Context, key, signalServer string, sock net.Conn) {
 	id := uuid.New().String()
 	log.Println("client id:", id)
 	pc, err := webrtc.New(defaultRTCConfiguration)
